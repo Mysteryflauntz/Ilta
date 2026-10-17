@@ -47,6 +47,22 @@
             <article class="metric-card"><span>SESSIONS <small>LAST 30 DAYS</small></span><b id="session-count">—</b><p>Not named or account-verified users</p></article>
             <article class="metric-card"><span>LINK CLICKS <small>LAST 30 DAYS</small></span><b id="click-count">—</b><p>Event, ticket, venue and source links</p></article>
           </div>
+          <section class="source-admin-panel">
+            <div class="clicks-heading">
+              <div><span class="eyebrow">AUTHORISED ORGANISER ACCOUNTS</span><h2>Social event sources</h2></div>
+              <button class="button button-lime" id="sync-social-sources" type="button">Sync accounts</button>
+            </div>
+            <p>Sync imports recent public posts from organiser accounts authorised through Meta or TikTok. Posts are drafts—not confirmed events—until you verify their date, venue, price and official link.</p>
+            <div id="social-sync-status" class="admin-message" role="status" aria-live="polite">Social account sync has not run yet.</div>
+          </section>
+          <section class="clicks-panel review-panel">
+            <div class="clicks-heading"><div><span class="eyebrow">ORGANISER SUBMISSIONS</span><h2>Review event submissions</h2></div><button class="button button-outline" id="refresh-submissions" type="button">Refresh</button></div>
+            <div id="submission-review-list" class="review-list" aria-live="polite"><p class="click-empty">Loading submissions…</p></div>
+          </section>
+          <section class="clicks-panel review-panel">
+            <div class="clicks-heading"><div><span class="eyebrow">SOCIAL POST DRAFTS</span><h2>Verify event details</h2></div><button class="button button-outline" id="refresh-social-candidates" type="button">Refresh</button></div>
+            <div id="social-candidate-list" class="review-list" aria-live="polite"><p class="click-empty">Loading social posts…</p></div>
+          </section>
           <section class="clicks-panel">
             <div class="clicks-heading"><div><span class="eyebrow">WHAT PEOPLE OPEN</span><h2>Recent link clicks</h2></div><span id="analytics-updated">Connecting…</span></div>
             <div id="click-list" class="click-list" aria-live="polite"></div>

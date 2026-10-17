@@ -9,13 +9,12 @@ let analyticsErrorReported = false;
 const state = {
   events: [],
   nextUrl: null,
-  filter: "all",
+  filter: "nightlife",
   query: "",
   view: "discover",
   saved: readSaved(),
   activeEvent: null,
   zoom: 1,
-  venues: new Map(),
   lastUpdated: null,
 };
 
@@ -76,15 +75,15 @@ function venueAddress(event) {
 
 function eventCategory(event) {
   const text = `${eventName(event)} ${plainText(lang(event.description))}`.toLowerCase();
-  if (/club|night ?life|dj|dance|disco|party|yökerho|klubi|bile|tanssi|keikka|concert|live music/.test(text)) return "nightlife";
-  if (/music|concert|musiik|konser|jazz|rock|band|orkester|sound|sing|song/.test(text)) return "music";
+  if (/club|night ?life|nightclub|after ?party|rave|dj|dance|disco|party|yökerho|klubi|bile|tanssi/.test(text)) return "nightlife";
+  if (/concert|live music|keikka|music|musiik|konser|jazz|rock|band|orkester|sound|sing|song/.test(text)) return "music";
   if (/exhibition|museum|theatre|theater|art|gallery|culture|näyttely|teatter|taide|kulttuur|elokuva|film/.test(text)) return "culture";
   return "event";
 }
 
 function categoryLabel(event) {
   const category = eventCategory(event);
-  return ({ nightlife: "Nightlife", music: "Music", culture: "Culture", event: "Helsinki event" })[category];
+  return category === "nightlife" ? "Club & party" : category === "music" ? "Music" : "Helsinki event";
 }
 
 function eventStart(event) {
@@ -129,6 +128,12 @@ function eventImage(event) {
   return image || null;
 }
 
+function isPaidEvent(event) {
+  const offer = eventOffer(event);
+  if (!offer || offer.is_free === true) return false;
+  return offer.is_free === false || Boolean(lang(offer.price));
+}
+
 function eventMatches(event) {
   if (state.view === "saved" && !state.saved.has(event.id)) return false;
   if (state.view === "tonight") {
@@ -138,8 +143,9 @@ function eventMatches(event) {
     const start = new Intl.DateTimeFormat("en-CA", { timeZone: HELSINKI_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(event.start_time));
     if (helsinkiNow !== start) return false;
   }
-  if (state.filter === "free" && eventPrice(event) !== "Free") return false;
-  if (["nightlife", "music", "culture"].includes(state.filter) && eventCategory(event) !== state.filter) return false;
+  if (state.filter === "free" && eventOffer(event)?.is_free !== true) return false;
+  if (state.filter === "paid" && !isPaidEvent(event)) return false;
+  if (state.filter === "nightlife" && eventCategory(event) !== "nightlife") return false;
   const query = state.query.trim().toLowerCase();
   if (query) {
     const searchable = [eventName(event), venueName(event), venueAddress(event), plainText(lang(event.description))].join(" ").toLowerCase();
@@ -223,10 +229,17 @@ function renderEvents() {
   grid.replaceChildren(...filtered.map(createEventCard));
   $("#results-meta").textContent = `${filtered.length} ${filtered.length === 1 ? "event" : "events"}${state.lastUpdated ? ` · UPDATED ${formatUpdated(state.lastUpdated)}` : ""}`;
   $("#feed-updated").textContent = state.lastUpdated ? formatUpdated(state.lastUpdated) : "when feed loads";
+  $("#empty-state h3").textContent = state.filter === "nightlife"
+    ? "No club or party listings right now."
+    : state.filter === "free"
+      ? "No free-entry listings right now."
+      : state.filter === "paid"
+        ? "No paid or ticketed listings right now."
+        : "No plans found. Yet.";
+  $("#empty-state p").textContent = "Try another option or check again after the city event feed refreshes.";
   $("#empty-state").hidden = filtered.length > 0;
   $("#load-more").hidden = !state.nextUrl || state.view === "saved";
   $("#hero-event-count").textContent = state.events.length ? `${state.events.length} PLANS IN THE MIX` : "NEW PLANS LANDING SOON";
-  renderVenues();
 }
 
 function formatUpdated(date) {
@@ -299,61 +312,16 @@ function setAnalyticsConsent(value) {
   if (value === "accepted") initializeAnalytics();
 }
 
-function rememberVenues(events) {
-  for (const event of events) {
-    const place = eventLocation(event);
-    if (!place?.id) continue;
-    if (!state.venues.has(place.id)) state.venues.set(place.id, { place, events: [] });
-    const venue = state.venues.get(place.id);
-    if (!venue.events.some((item) => item.id === event.id)) venue.events.push(event);
-  }
-}
-
-function venueMatches(venue) {
-  const place = venue.place;
-  const query = state.query.trim().toLowerCase();
-  if (!query) return true;
-  return [lang(place.name), lang(place.street_address), lang(place.description)].join(" ").toLowerCase().includes(query);
-}
-
-function renderVenues() {
-  const grid = $("#venue-grid");
-  const venues = [...state.venues.values()].filter(venueMatches).sort((a, b) => lang(a.place.name).localeCompare(lang(b.place.name))).slice(0, 24);
-  grid.replaceChildren(...venues.map(({ place, events }) => {
-    const button = makeElement("button", "venue-card");
-    button.type = "button";
-    const image = place.image?.url;
-    if (image) {
-      const img = makeElement("img");
-      img.src = image;
-      img.alt = "";
-      img.loading = "lazy";
-      img.decoding = "async";
-      button.append(img);
-    }
-    button.append(makeElement("span", "", `${events.length} ${events.length === 1 ? "event" : "events"} listed`));
-    button.append(makeElement("b", "", lang(place.name, "Helsinki venue")));
-    button.append(makeElement("small", "", lang(place.street_address) || lang(place.address_locality) || "Helsinki"));
-    button.addEventListener("click", () => openVenue(place.id));
-    return button;
-  }));
-  $("#venue-empty").hidden = venues.length > 0;
-}
-
 function setView(view) {
   state.view = view;
   $("#section-title").innerHTML = view === "tonight"
     ? 'Tonight in <span class="muted">Helsinki.</span>'
     : view === "saved"
       ? 'Your <span class="muted">saved plans.</span>'
-      : 'Find your <span class="muted">next thing.</span>';
-  const venues = view === "venues";
-  $("#venues-section").hidden = !venues;
-  $("#events-section").hidden = venues;
+      : 'Party &amp; club <span class="muted">events.</span>';
   $$(".nav-link, .mobile-nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === view));
-  if (!venues) renderEvents();
+  renderEvents();
   if (view === "tonight") $("#section-title").scrollIntoView({ block: "start", behavior: "smooth" });
-  else if (view === "venues") $("#venues-section").scrollIntoView({ block: "start", behavior: "smooth" });
   else if (view === "saved") $("#events-section").scrollIntoView({ block: "start", behavior: "smooth" });
 }
 
@@ -407,45 +375,55 @@ function openEvent(event) {
     placeholder.hidden = false;
     credit.textContent = "No official artwork supplied with this listing.";
   }
+  $("#share-status").textContent = "";
   updateDetailSave();
   dialog.showModal();
 }
 
-function openVenue(id) {
-  const data = state.venues.get(id);
-  if (!data) return;
-  const { place, events } = data;
-  $("#venue-title").textContent = lang(place.name, "Helsinki venue");
-  $("#venue-address").textContent = [lang(place.street_address), lang(place.address_locality)].filter(Boolean).join(", ");
-  $("#venue-description").textContent = lang(place.description) || "Venue details provided by Helsinki Linked Events.";
-  const imageWrap = $("#venue-dialog-image");
-  imageWrap.replaceChildren();
-  if (place.image?.url) {
-    const image = makeElement("img");
-    image.src = place.image.url;
-    image.alt = place.image.alt_text || `${lang(place.name)} venue`;
-    image.loading = "lazy";
-    imageWrap.append(image);
+async function shareActiveEvent() {
+  const event = state.activeEvent;
+  if (!event) return;
+  const shareUrl = new URL(window.location.href);
+  shareUrl.searchParams.set("event", event.id);
+  const shareData = {
+    title: eventName(event),
+    text: `${eventName(event)} · ${formatDate(event)} · ${venueName(event)} · ${eventPrice(event)}`,
+    url: shareUrl.href,
+  };
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+      return;
+    }
+    if (!navigator.clipboard?.writeText) throw new Error("This browser does not support link sharing or clipboard access");
+    await navigator.clipboard.writeText(shareUrl.href);
+    $("#share-status").textContent = "Event link copied. Send it to your friends.";
+  } catch (error) {
+    if (error.name === "AbortError") return;
+    console.error("Unable to share the Ilta event link:", error);
+    $("#share-status").textContent = "Sharing failed. You can copy the event link from your browser address bar.";
   }
-  const venueLink = $("#venue-link");
-  const url = lang(place.info_url);
-  venueLink.href = url || "#";
-  venueLink.hidden = !url;
-  venueLink.dataset.analyticsKind = "venue";
-  venueLink.dataset.eventId = id;
-  venueLink.dataset.eventName = lang(place.name, "Helsinki venue");
-  const rows = events.slice().sort((a, b) => eventStart(a) - eventStart(b)).slice(0, 6).map((event) => {
-    const row = makeElement("button", "venue-event-row");
-    row.type = "button";
-    row.append(makeElement("span", "", eventName(event)), makeElement("span", "", formatDate(event, true)));
-    row.addEventListener("click", () => {
-      $("#venue-dialog").close();
-      openEvent(event);
+}
+
+async function openSharedEvent() {
+  const eventId = new URLSearchParams(window.location.search).get("event");
+  if (!eventId) return;
+  const event = state.events.find((item) => item.id === eventId);
+  if (event) {
+    openEvent(event);
+    return;
+  }
+  try {
+    const response = await fetch(`https://api.hel.fi/linkedevents/v1/event/${encodeURIComponent(eventId)}/?include=location`, {
+      headers: { Accept: "application/json" },
     });
-    return row;
-  });
-  $("#venue-events").replaceChildren(...rows);
-  $("#venue-dialog").showModal();
+    if (!response.ok) throw new Error(`Shared event lookup returned ${response.status}`);
+    const payload = await response.json();
+    if (!payload.id) throw new Error("Shared event lookup returned no event");
+    openEvent(payload);
+  } catch (error) {
+    console.error("Unable to open the shared Helsinki event:", error);
+  }
 }
 
 function setFilter(filter) {
@@ -470,7 +448,6 @@ async function fetchEvents(url = API_URL, append = false) {
       ? [...state.events, ...incoming.filter((event) => !state.events.some((existing) => existing.id === event.id))]
       : incoming;
     state.nextUrl = payload.meta?.next || null;
-    rememberVenues(incoming);
     state.events.sort((a, b) => eventStart(a) - eventStart(b));
     state.lastUpdated = new Date();
     $("#live-label").textContent = `HELSINKI, LIVE · ${formatUpdated(state.lastUpdated)}`;
@@ -482,6 +459,7 @@ async function fetchEvents(url = API_URL, append = false) {
       art.classList.add("ready");
     }
     renderEvents();
+    if (!append) openSharedEvent();
   } catch (error) {
     console.error("Unable to load Helsinki events:", error);
     if (!append) {
@@ -527,12 +505,6 @@ function initialize() {
     state.query = event.target.value;
     renderEvents();
   });
-  $$(".quick-searches button").forEach((button) => button.addEventListener("click", () => {
-    state.query = button.dataset.query;
-    $("#event-search").value = state.query;
-    renderEvents();
-    $("#event-search").focus();
-  }));
   $("#refresh-button").addEventListener("click", () => fetchEvents());
   $("#load-more").addEventListener("click", () => state.nextUrl && fetchEvents(state.nextUrl, true));
   $("#clear-filters").addEventListener("click", () => {
@@ -541,8 +513,8 @@ function initialize() {
     setFilter("all");
   });
   $("#detail-save").addEventListener("click", () => state.activeEvent && toggleSaved(state.activeEvent.id));
+  $("#detail-share").addEventListener("click", shareActiveEvent);
   $("#dialog-close").addEventListener("click", () => $("#detail-dialog").close());
-  $("#venue-close").addEventListener("click", () => $("#venue-dialog").close());
   for (const [selector, change] of [["#zoom-in", 0.25], ["#zoom-out", -0.25]]) {
     $(selector).addEventListener("click", () => {
       state.zoom = Math.min(2.5, Math.max(1, state.zoom + change));
@@ -551,9 +523,6 @@ function initialize() {
   }
   $("#detail-dialog").addEventListener("click", (event) => {
     if (event.target === $("#detail-dialog")) $("#detail-dialog").close();
-  });
-  $("#venue-dialog").addEventListener("click", (event) => {
-    if (event.target === $("#venue-dialog")) $("#venue-dialog").close();
   });
   document.addEventListener("keydown", (event) => {
     if (event.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) {

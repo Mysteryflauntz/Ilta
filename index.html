@@ -21,7 +21,6 @@
         <nav class="desktop-nav" aria-label="Main navigation">
           <button class="nav-link active" data-view="discover">Discover</button>
           <button class="nav-link" data-view="tonight">Tonight</button>
-          <button class="nav-link" data-view="venues">Venues</button>
           <button class="nav-link" data-view="saved">Saved <span class="saved-count" id="saved-count">0</span></button>
         </nav>
         <div class="top-actions">
@@ -38,8 +37,8 @@
           <div class="hero-grain" aria-hidden="true"></div>
           <div class="hero-copy">
             <div class="eyebrow"><span class="status-dot"></span><span id="live-label">HELSINKI, LIVE</span><span class="eyebrow-divider"></span><span>YOUR NIGHT, YOUR CITY</span></div>
-            <h1>Make tonight<br> <span class="outline-text">a story.</span></h1>
-            <p class="hero-description">The city is yours. Find the nights, sounds and scenes worth stepping out for.</p>
+            <h1>Find your<br> <span class="outline-text">next night.</span></h1>
+            <p class="hero-description">Real Helsinki party and club events, with dates, venues, entry prices and ticket links in one place.</p>
             <div class="hero-actions">
               <button class="button button-lime" data-view="tonight">Explore tonight <span aria-hidden="true">↗</span></button>
               <a class="button button-quiet" href="#feed-status">Find your scene <span aria-hidden="true">↓</span></a>
@@ -52,13 +51,14 @@
         <section class="feed-status" id="feed-status" aria-labelledby="feed-title">
           <div class="feed-status-icon" aria-hidden="true"><span class="status-dot"></span></div>
           <div class="feed-status-copy">
-            <span class="eyebrow">CONNECTED EVENT SOURCE</span>
-            <h2 id="feed-title">Real listings.<br><span class="muted">No social detours.</span></h2>
-            <p>Ilta loads Helsinki event listings directly from the city’s open events feed and refreshes every five minutes. Social posts are not currently imported; they require approved platform access and a secure server connection.</p>
+            <span class="eyebrow">HELSINKI EVENT FEED</span>
+            <h2 id="feed-title">Only real plans.<br><span class="muted">No made-up listings.</span></h2>
+            <p>Listings combine Helsinki’s public event feed with submissions from organisers and posts from connected, authorised social accounts. Social posts remain review drafts until an Ilta admin verifies the event details.</p>
           </div>
           <div class="feed-status-meta">
-            <span class="feed-source-live"><span class="status-dot"></span> CITY FEED CONNECTED</span>
+            <span class="feed-source-live"><span class="status-dot"></span> HELSINKI CITY FEED</span>
             <span>Updated <b id="feed-updated">when feed loads</b></span>
+            <span id="connection-status" role="status">Checking organiser and social listings…</span>
             <a href="https://api.hel.fi/linkedevents/v1/" target="_blank" rel="noopener noreferrer" data-analytics-kind="data" data-event-name="Helsinki Linked Events API">About the event data ↗</a>
           </div>
         </section>
@@ -66,8 +66,8 @@
         <section class="events-section" id="events-section">
           <div class="section-heading">
             <div>
-              <span class="eyebrow">THE CITY IS ON</span>
-              <h2 id="section-title">Find your <span class="muted">next thing.</span></h2>
+              <span class="eyebrow">CURRENT HELSINKI LISTINGS</span>
+              <h2 id="section-title">Party &amp; club <span class="muted">events.</span></h2>
             </div>
             <div class="section-tools">
               <label class="search-box">
@@ -77,20 +77,12 @@
               </label>
             </div>
           </div>
-          <div class="quick-searches" role="group" aria-label="Quick searches">
-            <span>QUICK SEARCH</span>
-            <button type="button" data-query="Afrobeats">Afrobeats</button>
-            <button type="button" data-query="Maxine">Maxine</button>
-            <button type="button" data-query="Kaarle">Kaarle</button>
-            <button type="button" data-query="Valkoinen Sali">Valkoinen Sali</button>
-          </div>
           <div class="filters-row">
             <div class="filter-chips" role="group" aria-label="Filter events">
-              <button class="filter-chip selected" data-filter="all">All events</button>
-              <button class="filter-chip" data-filter="nightlife">Club &amp; nightlife</button>
-              <button class="filter-chip" data-filter="music">Music</button>
-              <button class="filter-chip" data-filter="culture">Culture</button>
-              <button class="filter-chip" data-filter="free">Free</button>
+              <button class="filter-chip selected" data-filter="nightlife">Club &amp; party</button>
+              <button class="filter-chip" data-filter="all">All city events</button>
+              <button class="filter-chip" data-filter="free">Free entry</button>
+              <button class="filter-chip" data-filter="paid">Paid / ticketed</button>
             </div>
             <span class="results-meta" id="results-meta" aria-live="polite">Loading events…</span>
           </div>
@@ -105,19 +97,34 @@
           <p class="api-note">City listings refresh every 5 minutes · Data: <a href="https://api.hel.fi/linkedevents/v1/" target="_blank" rel="noopener noreferrer" data-analytics-kind="data" data-event-name="Helsinki Linked Events API">Helsinki Linked Events API</a> · Image rights follow each event’s source license.</p>
         </section>
 
-        <section class="venues-section" id="venues-section" hidden>
-          <div class="section-heading">
-            <div><span class="eyebrow">PLACES WITH A PULSE</span><h2>Meet the <span class="muted">venues.</span></h2></div>
-            <p class="venue-intro">Places behind the plans, sourced from Helsinki’s public event listings.</p>
+        <section class="submission-section" id="submit-event" aria-labelledby="submit-event-title">
+          <div class="submission-intro">
+            <span class="eyebrow">FOR ORGANISERS</span>
+            <h2 id="submit-event-title">Have a Helsinki<br><span class="muted">event to share?</span></h2>
+            <p>Send the official event details for review. Submissions are checked before they appear in Ilta.</p>
           </div>
-          <div class="venue-grid" id="venue-grid"></div>
-          <div class="empty-state" id="venue-empty" hidden><span class="empty-icon">⌂</span><h3>Venue details are on the way.</h3><p>Check back as more city listings come in.</p></div>
+          <form class="submission-form" id="event-submission-form">
+            <label>Event name<input name="title" maxlength="200" required></label>
+            <label>Organiser<input name="organizer_name" maxlength="160" required></label>
+            <label>Date and time<input name="starts_at" type="datetime-local" required></label>
+            <label>Venue<input name="venue" maxlength="200" required></label>
+            <label>Address <span>(optional)</span><input name="address" maxlength="300"></label>
+            <label>Official event or ticket URL<input name="event_url" type="url" placeholder="https://" required></label>
+            <label>Flyer image URL <span>(optional)</span><input name="image_url" type="url" placeholder="https://"></label>
+            <label>Image description <span>(optional)</span><input name="image_alt" maxlength="300"></label>
+            <label>Entry price <span>(optional)</span><input name="price" maxlength="100" placeholder="e.g. €12"></label>
+            <label class="submission-free"><input name="is_free" type="checkbox"> Free entry</label>
+            <label class="submission-wide">Event details<textarea name="description" maxlength="12000" rows="4"></textarea></label>
+            <p class="submission-notice submission-wide">Only submit events you organise or are authorised to represent. By submitting, you confirm you have permission to share the details and artwork. Ilta reviews every submission before publishing.</p>
+            <button class="button button-lime submission-wide" type="submit">Submit for review <span aria-hidden="true">↗</span></button>
+            <p class="submission-message submission-wide" id="submission-message" role="status" aria-live="polite"></p>
+          </form>
         </section>
 
         <section class="source-note">
           <span class="source-symbol">✳</span>
-          <div><b>Made for Helsinki nights.</b><p>Event times, ticket prices and images can change. Always check the organiser’s page before heading out.</p></div>
-          <span class="source-city">GOOD VIBES ONLY · HELSINKI</span>
+          <div><b>Verified before publishing.</b><p>Ilta refreshes Helsinki’s public listings every five minutes. Approved social-account posts and organiser submissions are reviewed by an admin; check the linked organiser page for final details.</p></div>
+          <span class="source-city">HELSINKI · FINLAND</span>
         </section>
       </main>
 
@@ -141,7 +148,6 @@
     <nav class="mobile-nav" aria-label="Mobile navigation">
       <button class="mobile-nav-item active" data-view="discover"><span>⌂</span>Discover</button>
       <button class="mobile-nav-item" data-view="tonight"><span>✳</span>Tonight</button>
-      <button class="mobile-nav-item" data-view="venues"><span>⌖</span>Venues</button>
       <button class="mobile-nav-item" data-view="saved"><span>♡</span>Saved</button>
     </nav>
 
@@ -168,17 +174,14 @@
           <p class="detail-description" id="detail-description"></p>
           <div class="detail-actions">
             <a class="button button-lime" id="official-link" target="_blank" rel="noopener noreferrer">Open event page <span aria-hidden="true">↗</span></a>
-            <button class="button button-outline" id="detail-save">♡ Save event</button>
+            <button class="button button-outline" id="detail-share" type="button">↗ Share with friends</button>
+            <button class="button button-outline" id="detail-save" type="button">♡ Save event</button>
           </div>
+          <p class="share-status" id="share-status" role="status" aria-live="polite"></p>
           <div class="detail-source">Details from Helsinki Linked Events. Confirm the latest details with the organiser.</div>
         </div>
       </div>
     </dialog>
 
-    <dialog class="venue-dialog" id="venue-dialog" aria-labelledby="venue-title">
-      <button class="dialog-close icon-button" id="venue-close" aria-label="Close venue details">×</button>
-      <div class="venue-dialog-image" id="venue-dialog-image"></div>
-      <div class="venue-dialog-copy"><span class="eyebrow">HELSINKI VENUE</span><h2 id="venue-title"></h2><p id="venue-address"></p><p id="venue-description"></p><a class="button button-lime" id="venue-link" target="_blank" rel="noopener noreferrer">Venue website <span aria-hidden="true">↗</span></a><h3>Upcoming here</h3><div id="venue-events" class="venue-events"></div></div>
-    </dialog>
   </body>
 </html>
