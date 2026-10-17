@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#11120f">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Ilta Admin — Private dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="supabase-config.js" defer></script>
+    <script src="admin.js" defer></script>
+  </head>
+  <body class="admin-page">
+    <div class="admin-shell">
+      <header class="topbar admin-topbar">
+        <a class="brand" href="index.html" aria-label="Ilta home">
+          <span class="brand-mark" aria-hidden="true">i.</span><span>il<span class="brand-go">ta</span></span>
+        </a>
+        <div class="top-actions">
+          <span class="private-pill"><span aria-hidden="true">◈</span> PRIVATE DASHBOARD</span>
+          <a class="admin-back" href="index.html">← Back to Ilta</a>
+        </div>
+      </header>
+
+      <main class="admin-main">
+        <section class="admin-login" id="login-panel">
+          <span class="eyebrow">ADMIN ACCESS</span>
+          <h1>Your city.<br><span class="muted">Your numbers.</span></h1>
+          <p>Sign in with an administrator account to view live sessions and outbound event clicks.</p>
+          <form id="login-form">
+            <label for="admin-email">Email</label>
+            <input id="admin-email" name="email" type="email" autocomplete="username" required>
+            <label for="admin-password">Password</label>
+            <input id="admin-password" name="password" type="password" autocomplete="current-password" required>
+            <button class="button button-lime" type="submit">Sign in <span aria-hidden="true">↗</span></button>
+          </form>
+          <p class="admin-message" id="login-message" role="status" aria-live="polite">Sign-in is limited to accounts explicitly added as Ilta administrators.</p>
+        </section>
+
+        <section class="admin-dashboard" id="dashboard-panel" hidden>
+          <div class="admin-heading">
+            <div><span class="eyebrow"><span class="status-dot"></span> LIVE ANALYTICS</span><h1>Good to see you.</h1><p>Visitor activity updates automatically. Only aggregate counts and event-link labels are stored.</p></div>
+            <button class="button button-outline" id="sign-out">Sign out</button>
+          </div>
+          <div class="metric-grid">
+            <article class="metric-card"><span>ACTIVE NOW <small>LAST 5 MINUTES</small></span><b id="active-count">—</b><p>Pseudonymous browser sessions</p></article>
+            <article class="metric-card"><span>SESSIONS <small>LAST 30 DAYS</small></span><b id="session-count">—</b><p>Not named or account-verified users</p></article>
+            <article class="metric-card"><span>LINK CLICKS <small>LAST 30 DAYS</small></span><b id="click-count">—</b><p>Event, ticket, venue and source links</p></article>
+          </div>
+          <section class="clicks-panel">
+            <div class="clicks-heading"><div><span class="eyebrow">WHAT PEOPLE OPEN</span><h2>Recent link clicks</h2></div><span id="analytics-updated">Connecting…</span></div>
+            <div id="click-list" class="click-list" aria-live="polite"></div>
+          </section>
+          <p class="admin-privacy">Analytics uses a session-only random identifier. Ilta does not collect names, email addresses, IP addresses, social profiles or complete external URLs.</p>
+        </section>
+      </main>
+      <footer class="footer"><span>Ilta · Helsinki events</span><span>Private admin area · Supabase Auth + row-level security</span></footer>
+    </div>
+  </body>
+</html>

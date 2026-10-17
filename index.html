@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#11120f">
+    <meta name="description" content="Find what's happening in Helsinki tonight. Live city events, club nights, culture and more.">
+    <title>Ilta — Helsinki after hours</title>
+    <link rel="preconnect" href="https://api.hel.fi">
+    <link rel="stylesheet" href="styles.css">
+    <script src="supabase-config.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#discover" aria-label="Ilta home">
+          <span class="brand-mark" aria-hidden="true">i.</span>
+          <span>il<span class="brand-go">ta</span></span>
+        </a>
+        <nav class="desktop-nav" aria-label="Main navigation">
+          <button class="nav-link active" data-view="discover">Discover</button>
+          <button class="nav-link" data-view="tonight">Tonight</button>
+          <button class="nav-link" data-view="venues">Venues</button>
+          <button class="nav-link" data-view="saved">Saved <span class="saved-count" id="saved-count">0</span></button>
+        </nav>
+        <div class="top-actions">
+          <span class="city-pill"><span class="status-dot"></span> HELSINKI</span>
+          <button class="icon-button refresh-button" id="refresh-button" aria-label="Refresh events" title="Refresh events">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9a7 7 0 0 1 11.8-2L20 12M4 12l2.7 5a7 7 0 0 0 11.8-2"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero" id="discover">
+          <div class="hero-art" id="hero-art" aria-hidden="true"></div>
+          <div class="hero-grain" aria-hidden="true"></div>
+          <div class="hero-copy">
+            <div class="eyebrow"><span class="status-dot"></span><span id="live-label">HELSINKI, LIVE</span><span class="eyebrow-divider"></span><span>YOUR NIGHT, YOUR CITY</span></div>
+            <h1>Make tonight<br> <span class="outline-text">a story.</span></h1>
+            <p class="hero-description">The city is yours. Find the nights, sounds and scenes worth stepping out for.</p>
+            <div class="hero-actions">
+              <button class="button button-lime" data-view="tonight">Explore tonight <span aria-hidden="true">↗</span></button>
+              <a class="button button-quiet" href="#feed-status">Find your scene <span aria-hidden="true">↓</span></a>
+            </div>
+          </div>
+          <div class="hero-stamp" aria-hidden="true"><span>HELSINKI</span><b>60°10′N<br>24°56′E</b><span>FINLAND · 2026</span></div>
+          <div class="hero-bottom"><span>GOOD NIGHTS START HERE</span><span id="hero-event-count">LOADING THE CITY...</span></div>
+        </section>
+
+        <section class="feed-status" id="feed-status" aria-labelledby="feed-title">
+          <div class="feed-status-icon" aria-hidden="true"><span class="status-dot"></span></div>
+          <div class="feed-status-copy">
+            <span class="eyebrow">CONNECTED EVENT SOURCE</span>
+            <h2 id="feed-title">Real listings.<br><span class="muted">No social detours.</span></h2>
+            <p>Ilta loads Helsinki event listings directly from the city’s open events feed and refreshes every five minutes. Social posts are not currently imported; they require approved platform access and a secure server connection.</p>
+          </div>
+          <div class="feed-status-meta">
+            <span class="feed-source-live"><span class="status-dot"></span> CITY FEED CONNECTED</span>
+            <span>Updated <b id="feed-updated">when feed loads</b></span>
+            <a href="https://api.hel.fi/linkedevents/v1/" target="_blank" rel="noopener noreferrer" data-analytics-kind="data" data-event-name="Helsinki Linked Events API">About the event data ↗</a>
+          </div>
+        </section>
+
+        <section class="events-section" id="events-section">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">THE CITY IS ON</span>
+              <h2 id="section-title">Find your <span class="muted">next thing.</span></h2>
+            </div>
+            <div class="section-tools">
+              <label class="search-box">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.6"/><path d="m16 16 4.3 4.3"/></svg>
+                <input id="event-search" type="search" placeholder="Search events, places..." autocomplete="off" aria-label="Search events and venues">
+                <kbd>/</kbd>
+              </label>
+            </div>
+          </div>
+          <div class="quick-searches" role="group" aria-label="Quick searches">
+            <span>QUICK SEARCH</span>
+            <button type="button" data-query="Afrobeats">Afrobeats</button>
+            <button type="button" data-query="Maxine">Maxine</button>
+            <button type="button" data-query="Kaarle">Kaarle</button>
+            <button type="button" data-query="Valkoinen Sali">Valkoinen Sali</button>
+          </div>
+          <div class="filters-row">
+            <div class="filter-chips" role="group" aria-label="Filter events">
+              <button class="filter-chip selected" data-filter="all">All events</button>
+              <button class="filter-chip" data-filter="nightlife">Club &amp; nightlife</button>
+              <button class="filter-chip" data-filter="music">Music</button>
+              <button class="filter-chip" data-filter="culture">Culture</button>
+              <button class="filter-chip" data-filter="free">Free</button>
+            </div>
+            <span class="results-meta" id="results-meta" aria-live="polite">Loading events…</span>
+          </div>
+          <div class="event-grid" id="event-grid" aria-live="polite"></div>
+          <div class="empty-state" id="empty-state" hidden>
+            <span class="empty-icon">✳</span>
+            <h3>No plans found. Yet.</h3>
+            <p>Try another search, pick a different filter or check back soon.</p>
+            <button class="button button-outline" id="clear-filters">Clear filters</button>
+          </div>
+          <div class="load-more-wrap"><button class="button button-outline" id="load-more" hidden>Load more events <span aria-hidden="true">↓</span></button></div>
+          <p class="api-note">City listings refresh every 5 minutes · Data: <a href="https://api.hel.fi/linkedevents/v1/" target="_blank" rel="noopener noreferrer" data-analytics-kind="data" data-event-name="Helsinki Linked Events API">Helsinki Linked Events API</a> · Image rights follow each event’s source license.</p>
+        </section>
+
+        <section class="venues-section" id="venues-section" hidden>
+          <div class="section-heading">
+            <div><span class="eyebrow">PLACES WITH A PULSE</span><h2>Meet the <span class="muted">venues.</span></h2></div>
+            <p class="venue-intro">Places behind the plans, sourced from Helsinki’s public event listings.</p>
+          </div>
+          <div class="venue-grid" id="venue-grid"></div>
+          <div class="empty-state" id="venue-empty" hidden><span class="empty-icon">⌂</span><h3>Venue details are on the way.</h3><p>Check back as more city listings come in.</p></div>
+        </section>
+
+        <section class="source-note">
+          <span class="source-symbol">✳</span>
+          <div><b>Made for Helsinki nights.</b><p>Event times, ticket prices and images can change. Always check the organiser’s page before heading out.</p></div>
+          <span class="source-city">GOOD VIBES ONLY · HELSINKI</span>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <a class="brand footer-brand" href="#discover"><span class="brand-mark" aria-hidden="true">i.</span><span>il<span class="brand-go">ta</span></span></a>
+        <span>Find the night. Follow the feeling.</span>
+        <a href="https://api.hel.fi/linkedevents/v1/" target="_blank" rel="noopener noreferrer" data-analytics-kind="data" data-event-name="Helsinki Linked Events API">Event data by Helsinki Linked Events ↗</a>
+        <a href="admin.html">Admin sign in</a>
+        <button class="privacy-settings" id="privacy-settings" type="button">Privacy settings</button>
+      </footer>
+    </div>
+
+    <aside class="consent-banner" id="analytics-consent" aria-label="Optional analytics privacy settings" hidden>
+      <div><b>Help improve Ilta?</b><p>Optional analytics counts active browser sessions and event-link clicks. No names, IP addresses or social profiles are stored.</p></div>
+      <div class="consent-actions">
+        <button class="consent-accept" id="consent-accept" type="button">Allow analytics</button>
+        <button class="consent-decline" id="consent-decline" type="button">No thanks</button>
+      </div>
+    </aside>
+
+    <nav class="mobile-nav" aria-label="Mobile navigation">
+      <button class="mobile-nav-item active" data-view="discover"><span>⌂</span>Discover</button>
+      <button class="mobile-nav-item" data-view="tonight"><span>✳</span>Tonight</button>
+      <button class="mobile-nav-item" data-view="venues"><span>⌖</span>Venues</button>
+      <button class="mobile-nav-item" data-view="saved"><span>♡</span>Saved</button>
+    </nav>
+
+    <dialog class="detail-dialog" id="detail-dialog" aria-labelledby="detail-title">
+      <button class="dialog-close icon-button" id="dialog-close" aria-label="Close event details">×</button>
+      <div class="detail-layout">
+        <div class="flyer-panel">
+          <div class="flyer-toolbar">
+            <span>EVENT ARTWORK</span>
+            <div><button class="zoom-control" id="zoom-out" aria-label="Zoom out">−</button><button class="zoom-control" id="zoom-in" aria-label="Zoom in">+</button></div>
+          </div>
+          <div class="flyer-viewport" id="flyer-viewport" tabindex="0" aria-label="Event flyer. Use plus and minus buttons to zoom.">
+            <img id="detail-image" alt="" hidden>
+            <div class="flyer-placeholder" id="flyer-placeholder"><span>✳</span><small>NO EVENT IMAGE SUPPLIED</small></div>
+          </div>
+          <p class="flyer-credit" id="flyer-credit"></p>
+        </div>
+        <div class="detail-copy">
+          <span class="eyebrow" id="detail-kicker">HELSINKI EVENT</span>
+          <h2 id="detail-title"></h2>
+          <div class="detail-date" id="detail-date"></div>
+          <div class="detail-venue" id="detail-venue"></div>
+          <div class="detail-price" id="detail-price"></div>
+          <p class="detail-description" id="detail-description"></p>
+          <div class="detail-actions">
+            <a class="button button-lime" id="official-link" target="_blank" rel="noopener noreferrer">Open event page <span aria-hidden="true">↗</span></a>
+            <button class="button button-outline" id="detail-save">♡ Save event</button>
+          </div>
+          <div class="detail-source">Details from Helsinki Linked Events. Confirm the latest details with the organiser.</div>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog class="venue-dialog" id="venue-dialog" aria-labelledby="venue-title">
+      <button class="dialog-close icon-button" id="venue-close" aria-label="Close venue details">×</button>
+      <div class="venue-dialog-image" id="venue-dialog-image"></div>
+      <div class="venue-dialog-copy"><span class="eyebrow">HELSINKI VENUE</span><h2 id="venue-title"></h2><p id="venue-address"></p><p id="venue-description"></p><a class="button button-lime" id="venue-link" target="_blank" rel="noopener noreferrer">Venue website <span aria-hidden="true">↗</span></a><h3>Upcoming here</h3><div id="venue-events" class="venue-events"></div></div>
+    </dialog>
+  </body>
+</html>
