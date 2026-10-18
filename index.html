@@ -33,7 +33,17 @@
 
       <main>
         <section class="hero" id="discover">
-          <div class="hero-art" id="hero-art" aria-hidden="true"></div>
+          <div class="hero-art" id="hero-art">
+            <img
+              src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&amp;fit=crop&amp;w=1600&amp;q=80"
+              srcset="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&amp;fit=crop&amp;w=900&amp;q=75 900w, https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&amp;fit=crop&amp;w=1600&amp;q=80 1600w, https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&amp;fit=crop&amp;w=2000&amp;q=82 2000w"
+              sizes="100vw"
+              width="2000"
+              height="1333"
+              alt="DJ performing at a club under violet and magenta lights"
+              fetchpriority="high"
+              decoding="async">
+          </div>
           <div class="hero-grain" aria-hidden="true"></div>
           <div class="hero-copy">
             <div class="eyebrow"><span class="status-dot"></span><span id="live-label">HELSINKI, LIVE</span><span class="eyebrow-divider"></span><span>YOUR NIGHT, YOUR CITY</span></div>
@@ -45,7 +55,7 @@
             </div>
           </div>
           <div class="hero-stamp" aria-hidden="true"><span>HELSINKI</span><b>60°10′N<br>24°56′E</b><span>FINLAND · 2026</span></div>
-          <div class="hero-bottom"><span>GOOD NIGHTS START HERE</span><span id="hero-event-count">LOADING THE CITY...</span></div>
+          <div class="hero-bottom"><a href="https://unsplash.com/license" target="_blank" rel="noopener noreferrer">NIGHTLIFE COVER · UNSPLASH LICENSE ↗</a><span id="hero-event-count">LOADING THE CITY...</span></div>
         </section>
 
         <section class="feed-status" id="feed-status" aria-labelledby="feed-title">
@@ -53,7 +63,7 @@
           <div class="feed-status-copy">
             <span class="eyebrow">HELSINKI EVENT FEED</span>
             <h2 id="feed-title">Only real plans.<br><span class="muted">No made-up listings.</span></h2>
-            <p>Listings combine Helsinki’s public event feed with submissions from organisers and posts from connected, authorised social accounts. Social posts remain review drafts until an Ilta admin verifies the event details.</p>
+            <p>Helsinki’s public event feed is the live baseline. Once configured, Ilta also includes organiser submissions and posts from authorised social accounts; social posts remain drafts until an admin verifies the event details.</p>
           </div>
           <div class="feed-status-meta">
             <span class="feed-source-live"><span class="status-dot"></span> HELSINKI CITY FEED</span>
@@ -112,7 +122,7 @@
             <label>Official event or ticket URL<input name="event_url" type="url" placeholder="https://" required></label>
             <label>Flyer image URL <span>(optional)</span><input name="image_url" type="url" placeholder="https://"></label>
             <label>Image description <span>(optional)</span><input name="image_alt" maxlength="300"></label>
-            <label>Entry price <span>(optional)</span><input name="price" maxlength="100" placeholder="e.g. €12"></label>
+            <label>Entry price <span>(required unless free)</span><input name="price" maxlength="100" placeholder="e.g. €12 or Check event page"></label>
             <label class="submission-free"><input name="is_free" type="checkbox"> Free entry</label>
             <label class="submission-wide">Event details<textarea name="description" maxlength="12000" rows="4"></textarea></label>
             <p class="submission-notice submission-wide">Only submit events you organise or are authorised to represent. By submitting, you confirm you have permission to share the details and artwork. Ilta reviews every submission before publishing.</p>
@@ -123,7 +133,7 @@
 
         <section class="source-note">
           <span class="source-symbol">✳</span>
-          <div><b>Verified before publishing.</b><p>Ilta refreshes Helsinki’s public listings every five minutes. Approved social-account posts and organiser submissions are reviewed by an admin; check the linked organiser page for final details.</p></div>
+          <div><b>Verified before publishing.</b><p>Helsinki’s public listings refresh every five minutes. Configured social sources sync on an admin or scheduled refresh, and submitted/social events appear only after review. Check the linked organiser page for final details.</p></div>
           <span class="source-city">HELSINKI · FINLAND</span>
         </section>
       </main>
@@ -138,7 +148,7 @@
     </div>
 
     <aside class="consent-banner" id="analytics-consent" aria-label="Optional analytics privacy settings" hidden>
-      <div><b>Help improve Ilta?</b><p>Optional analytics counts active browser sessions and event-link clicks. No names, IP addresses or social profiles are stored.</p></div>
+      <div><b>Help improve Ilta?</b><p>Optional analytics counts active browser sessions and event-link clicks. It does not track visitor names, email addresses or IP addresses. Organiser event-source data is handled separately.</p></div>
       <div class="consent-actions">
         <button class="consent-accept" id="consent-accept" type="button">Allow analytics</button>
         <button class="consent-decline" id="consent-decline" type="button">No thanks</button>

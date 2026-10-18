@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-ilta-scheduler-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -42,16 +42,15 @@ function readAccounts(secretName: string, provider: Provider): SocialAccount[] {
   return parsed.map((item, index) => {
     if (!item || typeof item !== "object") throw new Error(`${secretName} entry ${index + 1} is invalid`);
     const account = item as Record<string, unknown>;
-    if (
-      account.provider !== provider ||
-      typeof account.accountId !== "string" ||
-      typeof account.displayName !== "string" ||
-      typeof account.accessToken !== "string"
-    ) {
+    if (!["instagram", "facebook", "tiktok"].includes(String(account.provider))) {
+      throw new Error(`${secretName} entry ${index + 1} has an unsupported provider`);
+    }
+    if (account.provider !== provider) return null;
+    if (typeof account.accountId !== "string" || typeof account.displayName !== "string" || typeof account.accessToken !== "string") {
       throw new Error(`${secretName} entry ${index + 1} needs provider, accountId, displayName, and accessToken`);
     }
     return account as SocialAccount;
-  });
+  }).filter((account): account is SocialAccount => account !== null);
 }
 
 function safeHttpsUrl(value: unknown): string | null {
@@ -146,20 +145,26 @@ Deno.serve(async (request) => {
     return jsonResponse(503, { error: "The server-side Supabase function is not fully configured." });
   }
 
-  const authorization = request.headers.get("Authorization");
-  if (!authorization) return jsonResponse(401, { error: "Administrator sign-in is required." });
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authorization } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data: authData, error: authError } = await userClient.auth.getUser();
-  if (authError || !authData.user) return jsonResponse(401, { error: "Administrator sign-in is required." });
-  const { data: admin, error: adminError } = await userClient
-    .from("ilta_admins")
-    .select("user_id")
-    .eq("user_id", authData.user.id)
-    .maybeSingle();
-  if (adminError || !admin) return jsonResponse(403, { error: "Only Ilta administrators can sync event accounts." });
+  const schedulerSecret = Deno.env.get("ILTA_SCHEDULER_SECRET");
+  const scheduledRequest = Boolean(
+    schedulerSecret && request.headers.get("x-ilta-scheduler-secret") === schedulerSecret,
+  );
+  if (!scheduledRequest) {
+    const authorization = request.headers.get("Authorization");
+    if (!authorization) return jsonResponse(401, { error: "Administrator sign-in is required." });
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authorization } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: authData, error: authError } = await userClient.auth.getUser();
+    if (authError || !authData.user) return jsonResponse(401, { error: "Administrator sign-in is required." });
+    const { data: admin, error: adminError } = await userClient
+      .from("ilta_admins")
+      .select("user_id")
+      .eq("user_id", authData.user.id)
+      .maybeSingle();
+    if (adminError || !admin) return jsonResponse(403, { error: "Only Ilta administrators can sync event accounts." });
+  }
 
   let accounts: SocialAccount[];
   try {

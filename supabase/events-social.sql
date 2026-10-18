@@ -4,12 +4,12 @@ create table if not exists public.ilta_events (
   description text not null default '' check (length(description) <= 12000),
   starts_at timestamptz not null,
   venue text not null check (length(trim(venue)) between 1 and 200),
-  address text not null default '',
+  address text not null default '' check (length(address) <= 300),
   is_free boolean not null default false,
-  price text not null default '',
-  event_url text not null check (event_url ~* '^https://'),
-  image_url text,
-  image_alt text not null default '',
+  price text not null default '' check (length(price) <= 100),
+  event_url text not null check (length(event_url) <= 2048 and event_url ~* '^https://'),
+  image_url text check (image_url is null or (length(image_url) <= 2048 and image_url ~* '^https://')),
+  image_alt text not null default '' check (length(image_alt) <= 300),
   source_kind text not null check (source_kind in ('organizer', 'instagram', 'facebook', 'tiktok')),
   source_record_id uuid,
   source_name text not null check (length(trim(source_name)) between 1 and 160),
@@ -19,8 +19,7 @@ create table if not exists public.ilta_events (
 
 create index if not exists ilta_events_starts_at_idx on public.ilta_events (starts_at);
 create unique index if not exists ilta_events_source_record_idx
-  on public.ilta_events (source_kind, source_record_id)
-  where source_record_id is not null;
+  on public.ilta_events (source_kind, source_record_id);
 alter table public.ilta_events enable row level security;
 
 create policy "Anyone can read upcoming published Ilta events"
@@ -34,6 +33,7 @@ create policy "Ilta admins manage published events"
   using (public.ilta_is_admin())
   with check (public.ilta_is_admin());
 
+revoke all on public.ilta_events from anon, authenticated;
 grant select on public.ilta_events to anon, authenticated;
 grant insert, update, delete on public.ilta_events to authenticated;
 
@@ -43,12 +43,12 @@ create table if not exists public.ilta_submissions (
   description text not null default '' check (length(description) <= 12000),
   starts_at timestamptz not null,
   venue text not null check (length(trim(venue)) between 1 and 200),
-  address text not null default '',
+  address text not null default '' check (length(address) <= 300),
   is_free boolean not null default false,
-  price text not null default '',
-  event_url text not null check (event_url ~* '^https://'),
-  image_url text,
-  image_alt text not null default '',
+  price text not null default '' check (length(price) <= 100),
+  event_url text not null check (length(event_url) <= 2048 and event_url ~* '^https://'),
+  image_url text check (image_url is null or (length(image_url) <= 2048 and image_url ~* '^https://')),
+  image_alt text not null default '' check (length(image_alt) <= 300),
   organizer_name text not null check (length(trim(organizer_name)) between 1 and 160),
   status text not null default 'pending' check (status in ('pending', 'published', 'rejected')),
   submitted_at timestamptz not null default now()
@@ -82,6 +82,7 @@ create policy "Ilta admins remove submissions"
   to authenticated
   using (public.ilta_is_admin());
 
+revoke all on public.ilta_submissions from anon, authenticated;
 grant insert (
   title, description, starts_at, venue, address, is_free, price,
   event_url, image_url, image_alt, organizer_name
@@ -93,9 +94,9 @@ create table if not exists public.ilta_social_candidates (
   provider text not null check (provider in ('instagram', 'facebook', 'tiktok')),
   provider_post_id text not null,
   source_name text not null,
-  post_text text not null default '',
-  post_url text not null check (post_url ~* '^https://'),
-  image_url text,
+  post_text text not null default '' check (length(post_text) <= 12000),
+  post_url text not null check (length(post_url) <= 2048 and post_url ~* '^https://'),
+  image_url text check (image_url is null or (length(image_url) <= 2048 and image_url ~* '^https://')),
   posted_at timestamptz,
   status text not null default 'pending' check (status in ('pending', 'rejected', 'used')),
   imported_at timestamptz not null default now(),
@@ -117,4 +118,22 @@ create policy "Ilta admins update social candidates"
   using (public.ilta_is_admin())
   with check (public.ilta_is_admin());
 
+revoke all on public.ilta_social_candidates from anon, authenticated;
 grant select, update on public.ilta_social_candidates to authenticated;
+grant select, insert, update on public.ilta_social_candidates to service_role;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.ilta_submissions;
+exception
+  when duplicate_object then null;
+end
+$$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.ilta_social_candidates;
+exception
+  when duplicate_object then null;
+end
+$$;

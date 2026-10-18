@@ -1,0 +1,2 @@
+[functions.sync-social-sources]
+verify_jwt = false

@@ -8,6 +8,9 @@ let visitorSessionId = null;
 let analyticsErrorReported = false;
 const state = {
   events: [],
+  cityEvents: [],
+  communityEvents: [],
+  communityFeedAvailable: false,
   nextUrl: null,
   filter: "nightlife",
   query: "",
@@ -126,6 +129,40 @@ function officialUrl(event) {
 function eventImage(event) {
   const image = Array.isArray(event.images) ? event.images.find((item) => item.url) : null;
   return image || null;
+}
+
+function mapApprovedEvent(row) {
+  return {
+    id: `ilta:${row.id}`,
+    name: row.title,
+    description: row.description || "",
+    start_time: row.starts_at,
+    location: { name: row.venue, street_address: row.address || "" },
+    offers: [{ is_free: row.is_free, price: row.price || "", info_url: row.event_url }],
+    info_url: row.event_url,
+    images: row.image_url
+      ? [{ url: row.image_url, alt_text: row.image_alt || `${row.title} event artwork`, license: "Supplied by organiser" }]
+      : [],
+    external_links: [{ link: row.event_url }],
+    iltaSource: { name: row.source_name, kind: row.source_kind, url: row.source_url },
+  };
+}
+
+async function loadApprovedEvents() {
+  const config = window.ILTA_SUPABASE_CONFIG;
+  if (!config?.url || !config?.anonKey) return [];
+
+  const url = new URL("/rest/v1/ilta_events", config.url);
+  url.searchParams.set("select", "*");
+  url.searchParams.set("starts_at", `gte.${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()}`);
+  url.searchParams.set("order", "starts_at.asc");
+  const response = await fetch(url, {
+    headers: { apikey: config.anonKey, Authorization: `Bearer ${config.anonKey}` },
+  });
+  if (!response.ok) throw new Error(`Approved event feed returned ${response.status}`);
+  const rows = await response.json();
+  if (!Array.isArray(rows)) throw new Error("Approved event feed did not return a list");
+  return rows.map(mapApprovedEvent);
 }
 
 function isPaidEvent(event) {
@@ -375,6 +412,9 @@ function openEvent(event) {
     placeholder.hidden = false;
     credit.textContent = "No official artwork supplied with this listing.";
   }
+  $(".detail-source").textContent = event.iltaSource
+    ? `Reviewed from ${event.iltaSource.name} · Confirm latest details with the organiser.`
+    : "Details from Helsinki Linked Events. Confirm the latest details with the organiser.";
   $("#share-status").textContent = "";
   updateDetailSave();
   dialog.showModal();
@@ -414,6 +454,21 @@ async function openSharedEvent() {
     return;
   }
   try {
+    if (eventId.startsWith("ilta:")) {
+      const config = window.ILTA_SUPABASE_CONFIG;
+      if (!config?.url || !config?.anonKey) throw new Error("Community event sharing is not configured");
+      const url = new URL("/rest/v1/ilta_events", config.url);
+      url.searchParams.set("select", "*");
+      url.searchParams.set("id", `eq.${eventId.slice("ilta:".length)}`);
+      url.searchParams.set("limit", "1");
+      const response = await fetch(url, {
+        headers: { apikey: config.anonKey, Authorization: `Bearer ${config.anonKey}` },
+      });
+      if (!response.ok) throw new Error(`Shared Ilta event lookup returned ${response.status}`);
+      const rows = await response.json();
+      if (rows[0]) openEvent(mapApprovedEvent(rows[0]));
+      return;
+    }
     const response = await fetch(`https://api.hel.fi/linkedevents/v1/event/${encodeURIComponent(eventId)}/?include=location`, {
       headers: { Accept: "application/json" },
     });
@@ -438,42 +493,147 @@ async function fetchEvents(url = API_URL, append = false) {
     refresh.classList.add("loading");
     renderSkeletons();
   }
+  const errors = [];
+  let cityLoaded = false;
   try {
     const response = await fetch(url, { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`Event feed returned ${response.status}`);
     const payload = await response.json();
     if (!Array.isArray(payload.data)) throw new Error("Event feed response did not contain an event list");
     const incoming = payload.data.filter((event) => event && event.id);
-    state.events = append
-      ? [...state.events, ...incoming.filter((event) => !state.events.some((existing) => existing.id === event.id))]
+    state.cityEvents = append
+      ? [...state.cityEvents, ...incoming.filter((event) => !state.cityEvents.some((existing) => existing.id === event.id))]
       : incoming;
     state.nextUrl = payload.meta?.next || null;
-    state.events.sort((a, b) => eventStart(a) - eventStart(b));
-    state.lastUpdated = new Date();
-    $("#live-label").textContent = `HELSINKI, LIVE · ${formatUpdated(state.lastUpdated)}`;
-    const heroEvent = state.events.find((event) => eventImage(event)?.url);
-    if (heroEvent) {
-      const heroImage = eventImage(heroEvent);
-      const art = $("#hero-art");
-      art.style.backgroundImage = `url("${heroImage.url.replaceAll('"', "%22")}")`;
-      art.classList.add("ready");
-    }
-    renderEvents();
-    if (!append) openSharedEvent();
+    cityLoaded = true;
   } catch (error) {
-    console.error("Unable to load Helsinki events:", error);
+    console.error("Unable to load Helsinki city events:", error);
+    errors.push("Helsinki city events are temporarily unavailable.");
     if (!append) {
-      $("#event-grid").replaceChildren();
-      $("#results-meta").textContent = "The live event feed is unavailable right now.";
-      $("#empty-state").hidden = false;
-      $("#empty-state h3").textContent = "The city feed is taking a breather.";
-      $("#empty-state p").textContent = "Please try again in a moment. We couldn't load verified event listings.";
-      $("#load-more").hidden = true;
-      $("#hero-event-count").textContent = "CHECK BACK IN A MOMENT";
+      state.cityEvents = [];
+      state.nextUrl = null;
     }
-  } finally {
-    refresh.classList.remove("loading");
   }
+
+  let communityLoaded = state.communityFeedAvailable;
+  if (!append) {
+    try {
+      state.communityEvents = await loadApprovedEvents();
+      state.communityFeedAvailable = Boolean(window.ILTA_SUPABASE_CONFIG?.url && window.ILTA_SUPABASE_CONFIG?.anonKey);
+      communityLoaded = true;
+    } catch (error) {
+      console.error("Unable to load approved organiser and social events:", error);
+      errors.push("Approved organiser and social events are temporarily unavailable.");
+      state.communityEvents = [];
+      state.communityFeedAvailable = false;
+    }
+  }
+
+  state.events = [...state.cityEvents, ...state.communityEvents]
+    .filter((event, index, items) => items.findIndex((item) => item.id === event.id) === index)
+    .sort((a, b) => eventStart(a) - eventStart(b));
+  state.lastUpdated = new Date();
+  $("#live-label").textContent = `${cityLoaded ? "HELSINKI, LIVE" : "APPROVED EVENTS"} · ${formatUpdated(state.lastUpdated)}`;
+  $("#connection-status").textContent = !window.ILTA_SUPABASE_CONFIG?.url || !window.ILTA_SUPABASE_CONFIG?.anonKey
+    ? "Organiser submissions and social accounts need Supabase setup."
+    : !cityLoaded && communityLoaded
+      ? "Helsinki feed unavailable; showing approved organiser and social events."
+    : communityLoaded
+      ? "Approved organiser events · social posts added after admin review."
+      : "Community events unavailable; showing Helsinki city listings.";
+  if (!cityLoaded && errors.length && !state.communityEvents.length && !state.cityEvents.length) {
+    $("#empty-state").hidden = false;
+    $("#empty-state h3").textContent = "Event sources are unavailable.";
+    $("#empty-state p").textContent = errors.join(" ");
+    $("#results-meta").textContent = "Could not load event listings.";
+    $("#hero-event-count").textContent = "CHECK BACK IN A MOMENT";
+    $("#load-more").hidden = true;
+  } else {
+    renderEvents();
+  }
+  if (!append) openSharedEvent();
+  if (append && !cityLoaded && errors.length) {
+    $("#results-meta").textContent = `${state.events.length} events · ${errors[0]}`;
+  }
+  refresh.classList.remove("loading");
+}
+
+function initializeOrganizerSubmission() {
+  const form = $("#event-submission-form");
+  const button = form.querySelector("button[type=submit]");
+  const message = $("#submission-message");
+  const config = window.ILTA_SUPABASE_CONFIG;
+  if (!config?.url || !config?.anonKey) {
+    button.disabled = true;
+    message.textContent = "Online submissions are not enabled yet. Please check back after setup.";
+    return;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const values = new FormData(form);
+    const eventUrl = String(values.get("event_url") || "").trim();
+    const imageUrl = String(values.get("image_url") || "").trim();
+    const isFree = values.get("is_free") === "on";
+    const price = String(values.get("price") || "").trim();
+    if (!isFree && !price) {
+      message.textContent = "Enter the confirmed entry price, or mark the event as free.";
+      message.classList.add("error");
+      return;
+    }
+    if (!eventUrl.startsWith("https://") || (imageUrl && !imageUrl.startsWith("https://"))) {
+      message.textContent = "Use secure https:// links for the official event page and flyer.";
+      message.classList.add("error");
+      return;
+    }
+    const startsAt = new Date(String(values.get("starts_at") || ""));
+    if (!Number.isFinite(startsAt.getTime())) {
+      message.textContent = "Enter a valid event date and time.";
+      message.classList.add("error");
+      return;
+    }
+
+    button.disabled = true;
+    message.classList.remove("error");
+    message.textContent = "Sending for review…";
+    const submission = {
+      title: String(values.get("title") || "").trim(),
+      organizer_name: String(values.get("organizer_name") || "").trim(),
+      starts_at: startsAt.toISOString(),
+      venue: String(values.get("venue") || "").trim(),
+      address: String(values.get("address") || "").trim(),
+      event_url: eventUrl,
+      image_url: imageUrl || null,
+      image_alt: String(values.get("image_alt") || "").trim(),
+      is_free: isFree,
+      price: isFree ? "Free" : price,
+      description: String(values.get("description") || "").trim(),
+    };
+    try {
+      const response = await fetch(new URL("/rest/v1/ilta_submissions", config.url), {
+        method: "POST",
+        headers: {
+          apikey: config.anonKey,
+          Authorization: `Bearer ${config.anonKey}`,
+          "Content-Type": "application/json",
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify(submission),
+      });
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(`Event submission returned ${response.status}: ${detail}`);
+      }
+      form.reset();
+      message.textContent = "Thanks. Your event is in the review queue and will appear only after approval.";
+    } catch (error) {
+      console.error("Unable to submit event for review:", error);
+      message.classList.add("error");
+      message.textContent = "We couldn't send this event. Check the details and try again later.";
+    } finally {
+      button.disabled = false;
+    }
+  });
 }
 
 function initialize() {
@@ -524,6 +684,7 @@ function initialize() {
   $("#detail-dialog").addEventListener("click", (event) => {
     if (event.target === $("#detail-dialog")) $("#detail-dialog").close();
   });
+  initializeOrganizerSubmission();
   document.addEventListener("keydown", (event) => {
     if (event.key === "/" && !["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) {
       event.preventDefault();
